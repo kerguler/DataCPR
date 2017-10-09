@@ -1,10 +1,10 @@
-# towData
+# DataCPR
 Continuous Plankton Recorder (CPR) Data Analyser
 
 ## Installation
 The R package can be installed from the command line,
 
-    R CMD install DataCPR_0.1.tar.gz
+    R CMD install DataCPR_x.x.tar.gz
 
 to be loaded easily at the R command prompt.
 
