@@ -22,14 +22,13 @@ This package is designed for the purpose of data analysis and visualisation for 
 }
 \arguments{
   \item{tow.id}{The serial number of the specific tow}
-  \item{tow.log}{Data files for the tow (mandatory)}
   \item{tow.ais}{Data files for the tow}
+  \item{tow.log}{Data files for the tow}
   \item{tow.ctd}{Data files for the tow}
   \item{tow.pci}{Data files for the tow}
   \item{silk.start}{Start of silk partitioning}
   \item{silk.end}{End of silk partitioning}
   \item{time.offset}{Time elapsed (in sec) until first data recording}
-  }
 }
     
 \value{

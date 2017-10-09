@@ -40,29 +40,34 @@ l.partial<-function(dat,x=NULL) {
     ))
 }
 
+read.cprfile <- function(filename) {
+    dat <- read.csv(filename,header=TRUE,comment.char="#",as.is=TRUE,blank.lines.skip=TRUE)
+    dat <- dat[rowSums(dat=="")!=ncol(dat),]
+}
+
 read.TowLog <- function(filename) {
-    dat<-read.csv(filename,header=TRUE)
+    dat<-read.cprfile(filename)
     d<-data.frame(
         "time" = strptime(paste(as.character(dat[["Date.UTC"]]),as.character(dat[["Time.UTC"]])),"%m/%d/%Y %H:%M",tz="UTC"),
         "lon" = as.numeric(sp::char2dms(as.character(dat[["Lon"]]),chd="o")),
         "lat" = as.numeric(sp::char2dms(as.character(dat[["Lat"]]),chd="o")),
-        "dist" = dat[["Distance"]]
+        "dist" = as.numeric(dat[["Distance"]])
     )
     return(d)
 }
 
 read.TowAIS <- function(filename) {
-    dat<-read.csv(filename,header=TRUE)
+    dat<-read.cprfile(filename)
     d<-data.frame(
         "time" = strptime(as.character(dat[["Timestamp..UTC."]]),"%m/%d/%Y %H:%M",tz="UTC"),
-        "lon" = dat[["Longitude"]],
-        "lat" = dat[["Latitude"]]
+        "lon" = as.numeric(dat[["Longitude"]]),
+        "lat" = as.numeric(dat[["Latitude"]])
     )
     return(d)
 }
 
 read.CTD <- function(filename,time.offset) {
-    dat<-read.csv(filename,header=FALSE,comment.char="#",as.is=TRUE)
+    dat<-read.cprfile(filename)
     d<-data.frame(
         "time" = strptime(as.character(dat$V2),"%d.%m.%y %H:%M:%S",tz="UTC")+3600*time.offset,
         "temp" = as.numeric(gsub(',','.',dat$V3)),
@@ -89,7 +94,7 @@ towClass <- setClass("towClass", slots=list(tow.log="character",
 
 setMethod("initialize",
           "towClass",
-          function(.Object, tow.log=NULL, tow.ais=NULL, tow.ctd=NULL, tow.pci=NULL, tow.id=NULL, silk.start=NULL, silk.end=NULL, time.offset=NULL) {
+          function(.Object, tow.log=NULL, tow.ais=NULL, tow.ctd=NULL, tow.pci=NULL, tow.id=0, silk.start=0, silk.end=0, time.offset=0) {
               .Object@tow.id <- tow.id
               .Object@time.offset <- time.offset
               .Object@silk.start <- silk.start
@@ -97,9 +102,6 @@ setMethod("initialize",
               if (length(tow.log)) {
                   .Object@tow.log <- tow.log
                   .Object@data.log <- read.TowLog(.Object@tow.log)
-              } else {
-                  stop("TowLog data file should be provided!")
-                  return(NULL)
               }
               if (length(tow.ais)) {
                   .Object@tow.ais <- tow.ais
@@ -118,7 +120,7 @@ setMethod("lonlat",
           function(object,x=NULL) {
               if (length(object@tow.log) && !length(object@tow.ais)) {
                   return(l.partial(object@data.log,x))
-              } else if (length(object@tow.ais)) {
+              } else if (length(object@tow.ais) && !length(object@tow.log)) {
                   return(l.spline(object@data.ais,x))
               }
               return(NULL)
