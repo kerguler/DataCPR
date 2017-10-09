@@ -1,0 +1,6 @@
+importFrom(sp,char2dms)
+export(towClass)
+exportClasses(towClass)
+exportMethods(lonlat)
+exportMethods(plot)
+exportMethods(show)
