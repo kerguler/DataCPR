@@ -20,7 +20,7 @@ In order to read the datasets into the dedicated class, we can use the following
                     tow.id=9,
                     silk.start=0,
                     silk.end=26.9,
-                    time.offset=-2)
+                    time.zone="Etc/GMT-2")
 
 Then, we can view the summary of the class contents with the followings:
 
