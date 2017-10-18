@@ -46,14 +46,15 @@ parse.date <- function(str) {
     str <- trim(str)
     s <- strsplit(str,"/")[[1]]
     if (length(s) == 3) {
-        if (nchar(s[3])==4) return(paste(s[1],s[2],s[3],sep=" "))
-        return(paste(s[1],s[2],format(strptime(s[3],format="%y"),"%Y"),sep=" "))
-    }
-    s <- strsplit(str,"[.]")[[1]]
-    if (length(s) == 3) {
         if (nchar(s[3])==4) return(paste(s[2],s[1],s[3],sep=" "))
         return(paste(s[2],s[1],format(strptime(s[3],format="%y"),"%Y"),sep=" "))
     }
+    s <- strsplit(str,"[.]")[[1]]
+    if (length(s) == 3) {
+        if (nchar(s[3])==4) return(paste(s[1],s[2],s[3],sep=" "))
+        return(paste(s[1],s[2],format(strptime(s[3],format="%y"),"%Y"),sep=" "))
+    }
+    return(NA)
 }
 
 parse.time <- function(str) {
@@ -114,7 +115,7 @@ read.lonlat <- function(dat) {
 
 read.cprfile <- function(filename) {
     dat <- read.csv(filename,header=TRUE,comment.char="#",as.is=TRUE,blank.lines.skip=TRUE)
-    dat <- dat[rowSums(dat=="")!=ncol(dat),]
+    dat <- dat[rowSums(dat=="",na.rm=TRUE)!=ncol(dat),]
     return(dat)
 }
 
