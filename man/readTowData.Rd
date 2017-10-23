@@ -37,6 +37,9 @@ This package is designed for the purpose of data analysis and visualisation for 
 \details{
     Cool stuff to wait for...
 }
+\seealso{
+    \code{\link{lonlat}}
+}
 \examples{
 \dontrun{
 tow <- towClass(tow.log="data/9_TowLog_R.csv",
@@ -58,6 +61,11 @@ print(tow@data.ctd)
 print(tow@data.pci)
 
 plot(tow)
+
+## In order to plot the CTD data along with the coordinates:
+
+ll<-lonlat(tow,tow@data.ctd$time)
+
 }
 }
 

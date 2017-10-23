@@ -203,7 +203,7 @@ setMethod("lonlat",
           function(object,x=NULL) {
               if (length(object@tow.log) && !length(object@tow.ais)) {
                   return(l.partial(object@data.log,x))
-              } else if (length(object@tow.ais) && !length(object@tow.log)) {
+              } else if (length(object@tow.ais)) {
                   return(l.spline(object@data.ais,x))
               }
               return(NULL)

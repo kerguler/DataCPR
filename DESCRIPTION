@@ -1,7 +1,7 @@
 Package: DataCPR
 Type: Package
 Title: Continuous Plankton Recorder (CPR) Data Analyser
-Version: 0.2
+Version: 0.3
 Date: 2017-10-09
 Author: Kamil Erguler
 Maintainer: Kamil Erguler <k.erguler@cyi.ac.cy>
