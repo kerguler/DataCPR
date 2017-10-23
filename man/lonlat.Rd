@@ -10,7 +10,7 @@ This package is designed for the purpose of data analysis and visualisation for 
 }
 \arguments{
   \item{tow }{The towClass to use for interpolation }
-  \item{x }{ISOdate times to calculate location. If not provided, data.ais or data.log is used}
+  \item{x }{ISOdatetime objects to calculate location. If not provided, data.ais or data.log is used}
 }
     
 \value{
@@ -26,6 +26,6 @@ tow <- towClass(tow.ais="2MCHL/2_TowAIS_R.csv",
 
 lonlat(tow)
 lonlat(tow,tow@data.ctd$time)
-lonlat(tow,ISOdate(2014,11,05,23,20,30,"Etc/GMT-2"))
+lonlat(tow,ISOdatetime(2014,11,05,23,20,30,"Etc/GMT-2"))
 }
 }

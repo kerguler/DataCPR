@@ -156,6 +156,159 @@ read.CTD <- function(filename,time.zone) {
     return(d)
 }
 
+plot.coord <- function(x,  y, dates=NULL, add=FALSE, col="black", ...) {
+    y <- if (is.null(dates)) {
+             if (length(x@tow.ais)) {
+                 x@data.ais$time
+             } else {
+                 seq(x@data.log$time[1],x@data.log$time[length(x@data.log$time)],"mins")
+             }
+         } else {
+             dates
+         }
+    l.dl<-lonlat(x,y)
+    fun <- if (!add) {plot} else {lines}
+    fun(l.dl$lon,l.dl$lat,type="l",lwd=1.5,col=col,xlab="Longitude",ylab="Latitude",...)
+    if (length(x@tow.ais))
+        points(x@data.ais$lon,x@data.ais$lat,pch=1,cex=1.5,col=rgb(0,0,0,0.5))
+    points(x@data.log$lon,x@data.log$lat,pch=16,cex=1,col="red")
+}
+
+rescale<-function(a,b=c(0,1),r=NULL) {
+    if (is.null(r)) r<-range(a,na.rm=TRUE)
+    return(b[1]+(b[2]-b[1])*(a-r[1])/(r[2]-r[1]))
+}
+rotmat<-function(theta) matrix(c(cos(theta),-sin(theta),sin(theta),cos(theta)),nrow=2,ncol=2)
+data.rot<-function(x,y,r,dir=1)
+{
+    rot90<-rotmat(-0.5*pi)
+    rotm90<-rotmat(0.5*pi)
+    ret<-matrix(NA,ncol=2,nrow=length(x))
+    mat<-rbind(cbind(x,y),c(x[length(x)-1],y[length(y)-1]))
+    for (i in 1:length(x)) {
+        m<-t(mat[i+1,])-mat[i,]
+        m<-m/sqrt(sum(m^2))
+        rot<-if (dir>0) {rot90} else {rotm90}
+        if (i==length(x)) {
+            rot<-if (dir>0) {rotm90} else {rot90}
+        }
+        ret[i,]<-(m%*%rot)*r[i] + mat[i,]
+    }
+    return(data.frame(x=ret[,1],y=ret[,2]))
+}
+poly2d<-function(ll1,ll2) {
+    return(data.frame(x=c(ll1$x,rev(ll2$x)),
+                      y=c(ll1$y,rev(ll2$y))))
+}
+dash2d<-function(ll1,ll2) {
+    return(data.frame(x=unlist(lapply(1:nrow(ll1),function(i) c(ll1$x[i],ll2$x[i],NA))),
+                      y=unlist(lapply(1:nrow(ll1),function(i) c(ll1$y[i],ll2$y[i],NA)))))
+}
+plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
+    d<-x@data.ctd
+    d<-d[(d$time>=x@start.date) & (d$time<=x@stop.date),]
+    ll<-lonlat(x,d$time)
+    xy<-data.frame(x=ll$lon,y=ll$lat)
+    # ---
+    if (any(is.na(xlim))) xlim<-range(ll$lon)+c(-1.0,1.0)
+    if (any(is.na(ylim))) ylim<-range(ll$lat)+c(-0.5,0.5)
+    m<-map("world",xlim=xlim,ylim=ylim,resolution=0)
+    # ---
+    lgd<-list(c(
+        "black",
+        "Time",
+        c(strftime(tow@start.date,"%d.%m.%y\n%H:%M:%S"),strftime(tow@stop.date,"%d.%m.%y\n%H:%M:%S")),
+        "rev"
+    ))
+    if (!all(is.na(d$temp))) {
+        ll2<-data.rot(xy$x,xy$y,rescale(d$temp,c(0.01,0.25)),dir=1)
+        polygon(poly2d(xy,ll2),border="red")
+        lgd<-append(lgd,list(c(
+            "red",
+            expression("Temperature ("~degree~"C)"),
+            range(d$temp,na.rm=TRUE),
+            "fwd"
+            )))
+    }
+    if (!all(is.na(d$pres))) {
+        ll2<-data.rot(xy$x,xy$y,rescale(d$pres,c(0.01,0.25)),dir=1)
+        polygon(poly2d(xy,ll2),border="violet")
+        lgd<-append(lgd,list(c(
+            "violet",
+            "Pressure (Bar)",
+            range(d$pres,na.rm=TRUE),
+            "fwd"
+            )))
+    }
+    if (!all(is.na(d$salin))) {
+        ll2<-data.rot(xy$x,xy$y,rescale(d$salin,c(0.01,0.25)),dir=-1)
+        polygon(poly2d(xy,ll2),border="green")
+        lgd<-append(lgd,list(c(
+            "green",
+            "Salinity (psu)",
+            range(d$salin,na.rm=TRUE),
+            "fwd"
+            )))
+    }
+    if (!all(is.na(d$depth))) {
+        ll2<-data.rot(xy$x,xy$y,rescale(d$depth,c(0.01,0.25)),dir=-1)
+        polygon(poly2d(xy,ll2),border="blue")
+        lgd<-append(lgd,list(c(
+            "blue",
+            "Depth (m)",
+            range(d$depth,na.rm=TRUE),
+            "fwd"
+            )))
+    }
+    # ---
+    lines(ll$lon,ll$lat,
+          lw=2,
+          col="black")
+    ord<-c(which(d$time==min(d$time)),
+           which(d$time==max(d$time)))
+    l <- if (ord[2]>=ord[1]) {ll} else {ll[nrow(ll):1,]}
+    arrows(l$lon[2],l$lat[2],l$lon[1],l$lat[1],
+           lw=2,
+           col="black",
+           length=0.1,
+           angle=120)
+    # ---
+    # x1, y1, x2, y2
+    bbox<-c(xlim[1],0.15*(ylim[2]-ylim[1])+ylim[1],0.25*(xlim[2]-xlim[1])+xlim[1],ylim[2])
+    ow<-0.2*(bbox[3]-bbox[1])
+    oh<-0.075*(bbox[4]-bbox[2])
+    bbox[1]<-bbox[1]+ow
+    bbox[3]<-bbox[3]+ow
+    for (n in length(lgd):1) {
+        if (eval(lgd[[n]][5]) == "rev") {
+            arrows(
+                bbox[3],
+                bbox[2]-(n-1)*oh,
+                bbox[1],
+                bbox[2]-(n-1)*oh,
+                lw=2,
+                length=0.05,
+                angle=120,
+                col=eval(lgd[[n]][1])
+            )
+        } else {
+            arrows(
+                bbox[1],
+                bbox[2]-(n-1)*oh,
+                bbox[3],
+                bbox[2]-(n-1)*oh,
+                lw=2,
+                length=0.05,
+                angle=30,
+                col=eval(lgd[[n]][1])
+            )
+        }
+        text(bbox[1],bbox[2]-(n-1)*oh,lgd[[n]][3],pos=3,cex=0.5)
+        text(bbox[3],bbox[2]-(n-1)*oh,lgd[[n]][4],pos=3,cex=0.5)
+        text(bbox[3],bbox[2]-(n-1)*oh,lgd[[n]][2],pos=4,cex=0.5)
+    }
+}
+
 # https://www.programiz.com/r-programming/S4-class
 
 towClass <- setClass("towClass", slots=list(tow.log="character",
@@ -164,7 +317,9 @@ towClass <- setClass("towClass", slots=list(tow.log="character",
                                             tow.pci="character",
                                             tow.id="numeric",
                                             silk.start="numeric",
-                                            silk.end="numeric",
+                                            silk.stop="numeric",
+                                            start.date="POSIXct",
+                                            stop.date="POSIXct",
                                             time.zone="character",
                                             data.log="data.frame",
                                             data.ais="data.frame",
@@ -173,7 +328,7 @@ towClass <- setClass("towClass", slots=list(tow.log="character",
 
 setMethod("initialize",
           "towClass",
-          function(.Object, tow.log=NULL, tow.ais=NULL, tow.ctd=NULL, tow.pci=NULL, tow.id=0, silk.start=0, silk.end=0, time.zone="Etc/GMT-2") {
+          function(.Object, tow.log=NULL, tow.ais=NULL, tow.ctd=NULL, tow.pci=NULL, tow.id=0, silk.start=0, silk.stop=0, time.zone="Etc/GMT-2") {
               .Object@tow.id <- tow.id
               .Object@time.zone <- time.zone
               if (!(.Object@time.zone%in%OlsonNames())) {
@@ -181,14 +336,18 @@ setMethod("initialize",
                   warning("This is not a valid time zone: ",time.zone,"\nPlease see the documentation for Sys.timezone for more information.\nUsing ",.Object@time.zone," as default.")
               }
               .Object@silk.start <- silk.start
-              .Object@silk.end <- silk.end
+              .Object@silk.stop <- silk.stop
               if (length(tow.log)) {
                   .Object@tow.log <- tow.log
                   .Object@data.log <- read.TowLog(.Object@tow.log,.Object@time.zone)
+                  .Object@start.date <- min(.Object@data.log$time,na.rm=TRUE)
+                  .Object@stop.date <- max(.Object@data.log$time,na.rm=TRUE)
               }
               if (length(tow.ais)) {
                   .Object@tow.ais <- tow.ais
                   .Object@data.ais <- read.TowAIS(.Object@tow.ais,.Object@time.zone)
+                  .Object@start.date <- min(.Object@data.ais$time,na.rm=TRUE)
+                  .Object@stop.date <- max(.Object@data.ais$time,na.rm=TRUE)
               }
               if (length(tow.ctd)) {
                   .Object@tow.ctd <- tow.ctd
@@ -212,30 +371,20 @@ setMethod("lonlat",
 setMethod("show",
           "towClass",
           function(object) {
-              cat("Tow ID...........:", object@tow.id, "\n")
-              cat("Tow Log..........:", object@tow.log, "\n")
-              cat("Tow AIS..........:", object@tow.ais, "\n")
-              cat("Tow CTD..........:", object@tow.ctd, "\n")
-              cat("Tow PCI..........:", object@tow.pci, "\n")
-              cat("Silk (start, end):", sprintf("%g, %g",object@silk.start,object@silk.end), "\n")
+              cat("Tow ID............:", object@tow.id, "\n")
+              cat("Tow Log...........:", object@tow.log, "\n")
+              cat("Tow AIS...........:", object@tow.ais, "\n")
+              cat("Tow CTD...........:", object@tow.ctd, "\n")
+              cat("Tow PCI...........:", object@tow.pci, "\n")
+              cat("Silk (start, stop):", sprintf("%g, %g",object@silk.start,object@silk.stop), "\n")
+              cat("Time (start, stop):", sprintf("%g, %g",object@start.date,object@stop.date), "\n")
               cat("Time zone........:", object@time.zone, "\n")
           })
 
 setMethod("plot", signature(x="towClass", y="missing"),
           function(x,  y, dates=NULL, add=FALSE, col="black", ...) {
-              y <- if (is.null(dates)) {
-                       if (length(x@tow.ais)) {
-                           x@data.ais$time
-                       } else {
-                           seq(x@data.log$time[1],x@data.log$time[length(x@data.log$time)],"mins")
-                       }
-                   } else {
-                       dates
-                   }
-              l.dl<-lonlat(x,y)
-              fun <- if (!add) {plot} else {lines}
-              fun(l.dl$lon,l.dl$lat,type="l",lwd=1.5,col=col,xlab="Longitude",ylab="Latitude",...)
-              if (length(x@tow.ais))
-                  points(x@data.ais$lon,x@data.ais$lat,pch=1,cex=1.5,col=rgb(0,0,0,0.5))
-              points(x@data.log$lon,x@data.log$lat,pch=16,cex=1,col="red")
+              plot.coord(x, y, dates=dates, add=add, col=col, ...)
+              readline(prompt = "Press <Enter> to continue...")
+              plot.ctd(x, ...)
           })
+

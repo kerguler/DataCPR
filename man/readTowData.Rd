@@ -26,8 +26,8 @@ This package is designed for the purpose of data analysis and visualisation for 
   \item{tow.log}{Data files for the tow}
   \item{tow.ctd}{Data files for the tow}
   \item{tow.pci}{Data files for the tow}
-  \item{silk.start}{Start of silk partitioning}
-  \item{silk.end}{End of silk partitioning}
+  \item{silk.start}{Beginning of silk partitioning}
+  \item{silk.stop}{End of silk partitioning}
   \item{time.offset}{Time elapsed (in sec) until first data recording}
 }
     
@@ -48,7 +48,7 @@ tow <- towClass(tow.log="data/9_TowLog_R.csv",
                 tow.pci="data/9_PCI_R.csv",
                 tow.id=9,
                 silk.start=0,
-                silk.end=26.9,
+                silk.stop=26.9,
                 time.zone="Etc/GMT-2")
 
 ## Then, we can view the summary of the class contents with the followings:
@@ -61,11 +61,6 @@ print(tow@data.ctd)
 print(tow@data.pci)
 
 plot(tow)
-
-## In order to plot the CTD data along with the coordinates:
-
-ll<-lonlat(tow,tow@data.ctd$time)
-
 }
 }
 
