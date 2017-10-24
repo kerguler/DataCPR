@@ -181,14 +181,27 @@ rescale<-function(a,b=c(0,1),r=NULL) {
 rotmat<-function(theta) matrix(c(cos(theta),-sin(theta),sin(theta),cos(theta)),nrow=2,ncol=2)
 data.rot<-function(x,y,r,dir=1)
 {
+    sz<-max(1,round(length(x)/10))
     rot90<-rotmat(-0.5*pi)
     rotm90<-rotmat(0.5*pi)
     ret<-matrix(NA,ncol=2,nrow=length(x))
     mat<-rbind(cbind(x,y),c(x[length(x)-1],y[length(y)-1]))
     for (i in 1:length(x)) {
-        m<-t(mat[i+1,])-mat[i,]
+        xx1<-mat[i,1]
+        xx2<-mat[i+1,1]
+        m<-data.frame(mat[max(1,i-sz):min(length(x)+1,i+sz),])
+        if (all(m$x==m$x[1])) {
+            yy1<-mat[i,2]
+            yy2<-mat[i+1,2]
+        } else {
+            l<-lm(y~x,m)
+            tmp<-predict(l,data.frame(x=c(xx1,xx2)))
+            yy1<-tmp[1]
+            yy2<-tmp[2]
+        }
+        m<-t(c(xx2-xx1,yy2-yy1))
         m<-m/sqrt(sum(m^2))
-        rot<-if (dir>0) {rot90} else {rotm90}
+        rot<-if ((dir>0 && xx2>xx1) || (dir<0 && xx2<xx1)) {rot90} else {rotm90}
         if (i==length(x)) {
             rot<-if (dir>0) {rotm90} else {rot90}
         }
@@ -199,10 +212,6 @@ data.rot<-function(x,y,r,dir=1)
 poly2d<-function(ll1,ll2) {
     return(data.frame(x=c(ll1$x,rev(ll2$x)),
                       y=c(ll1$y,rev(ll2$y))))
-}
-dash2d<-function(ll1,ll2) {
-    return(data.frame(x=unlist(lapply(1:nrow(ll1),function(i) c(ll1$x[i],ll2$x[i],NA))),
-                      y=unlist(lapply(1:nrow(ll1),function(i) c(ll1$y[i],ll2$y[i],NA)))))
 }
 plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
     d<-x@data.ctd
@@ -276,7 +285,7 @@ plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
     # x1, y1, x2, y2
     bbox<-c(xlim[1],0.15*(ylim[2]-ylim[1])+ylim[1],0.25*(xlim[2]-xlim[1])+xlim[1],ylim[2])
     ow<-0.2*(bbox[3]-bbox[1])
-    oh<-0.075*(bbox[4]-bbox[2])
+    oh<-0.06*(bbox[4]-bbox[2])
     bbox[1]<-bbox[1]+ow
     bbox[3]<-bbox[3]+ow
     for (n in length(lgd):1) {
