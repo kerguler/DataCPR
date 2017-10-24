@@ -179,25 +179,36 @@ rescale<-function(a,b=c(0,1),r=NULL) {
     return(b[1]+(b[2]-b[1])*(a-r[1])/(r[2]-r[1]))
 }
 rotmat<-function(theta) matrix(c(cos(theta),-sin(theta),sin(theta),cos(theta)),nrow=2,ncol=2)
-data.rot<-function(x,y,r,dir=1)
+data.rot<-function(x,y,r,dir=1,template=NA)
 {
+    bld<-all(is.na(template))
     sz<-max(1,round(length(x)/10))
     rot90<-rotmat(-0.5*pi)
     rotm90<-rotmat(0.5*pi)
     ret<-matrix(NA,ncol=2,nrow=length(x))
+    if (bld) {
+        template<-matrix(NA,ncol=2,nrow=length(x))
+    }
     mat<-rbind(cbind(x,y),c(x[length(x)-1],y[length(y)-1]))
     for (i in 1:length(x)) {
         xx1<-mat[i,1]
         xx2<-mat[i+1,1]
         m<-data.frame(mat[max(1,i-sz):min(length(x)+1,i+sz),])
-        if (all(m$x==m$x[1])) {
-            yy1<-mat[i,2]
-            yy2<-mat[i+1,2]
+        if (bld) {
+            if (all(m$x==m$x[1])) {
+                yy1<-mat[i,2]
+                yy2<-mat[i+1,2]
+            } else {
+                l<-lm(y~x,m)
+                tmp<-predict(l,data.frame(x=c(xx1,xx2)))
+                yy1<-tmp[1]
+                yy2<-tmp[2]
+            }
+            template[i,1]<-yy1
+            template[i,2]<-yy2
         } else {
-            l<-lm(y~x,m)
-            tmp<-predict(l,data.frame(x=c(xx1,xx2)))
-            yy1<-tmp[1]
-            yy2<-tmp[2]
+            yy1<-template[i,1]
+            yy2<-template[i,2]
         }
         m<-t(c(xx2-xx1,yy2-yy1))
         m<-m/sqrt(sum(m^2))
@@ -207,7 +218,7 @@ data.rot<-function(x,y,r,dir=1)
         }
         ret[i,]<-(m%*%rot)*r[i] + mat[i,]
     }
-    return(data.frame(x=ret[,1],y=ret[,2]))
+    return(list(xy=data.frame(x=ret[,1],y=ret[,2]),template=template))
 }
 poly2d<-function(ll1,ll2) {
     return(data.frame(x=c(ll1$x,rev(ll2$x)),
@@ -229,9 +240,10 @@ plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
         c(strftime(tow@start.date,"%d.%m.%y\n%H:%M:%S"),strftime(tow@stop.date,"%d.%m.%y\n%H:%M:%S")),
         "rev"
     ))
+    ll2<-list(template=NA)
     if (!all(is.na(d$temp))) {
-        ll2<-data.rot(xy$x,xy$y,rescale(d$temp,c(0.01,0.25)),dir=1)
-        polygon(poly2d(xy,ll2),border="red")
+        ll2<-data.rot(xy$x,xy$y,rescale(d$temp,c(0.01,0.25)),dir=1,template=ll2$template)
+        polygon(poly2d(xy,ll2$xy),border="red")
         lgd<-append(lgd,list(c(
             "red",
             expression("Temperature ("~degree~"C)"),
@@ -240,8 +252,8 @@ plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
             )))
     }
     if (!all(is.na(d$pres))) {
-        ll2<-data.rot(xy$x,xy$y,rescale(d$pres,c(0.01,0.25)),dir=1)
-        polygon(poly2d(xy,ll2),border="violet")
+        ll2<-data.rot(xy$x,xy$y,rescale(d$pres,c(0.01,0.25)),dir=1,template=ll2$template)
+        polygon(poly2d(xy,ll2$xy),border="violet")
         lgd<-append(lgd,list(c(
             "violet",
             "Pressure (Bar)",
@@ -250,8 +262,8 @@ plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
             )))
     }
     if (!all(is.na(d$salin))) {
-        ll2<-data.rot(xy$x,xy$y,rescale(d$salin,c(0.01,0.25)),dir=-1)
-        polygon(poly2d(xy,ll2),border="green")
+        ll2<-data.rot(xy$x,xy$y,rescale(d$salin,c(0.01,0.25)),dir=-1,template=ll2$template)
+        polygon(poly2d(xy,ll2$xy),border="green")
         lgd<-append(lgd,list(c(
             "green",
             "Salinity (psu)",
@@ -260,8 +272,8 @@ plot.ctd <- function(x, xlim=NA, ylim=NA, ...) {
             )))
     }
     if (!all(is.na(d$depth))) {
-        ll2<-data.rot(xy$x,xy$y,rescale(d$depth,c(0.01,0.25)),dir=-1)
-        polygon(poly2d(xy,ll2),border="blue")
+        ll2<-data.rot(xy$x,xy$y,rescale(d$depth,c(0.01,0.25)),dir=-1,template=ll2$template)
+        polygon(poly2d(xy,ll2$xy),border="blue")
         lgd<-append(lgd,list(c(
             "blue",
             "Depth (m)",
